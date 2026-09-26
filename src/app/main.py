@@ -10,9 +10,6 @@ from src.app.pipeline.geospatial.telemetry import (
     fetch_upstream_rain,
     get_cwc_gauge_summary,
 )
-from src.app.pipeline.ml.change_detector import detect_flood_extent
-from src.app.pipeline.geospatial.risk_evaluator import evaluate_flood_impact
-from src.app.pipeline.geospatial.gee_client import fetch_sar_pair
 
 app = FastAPI(
     title="CropSentinel AI Telemetry API",
@@ -129,6 +126,13 @@ def run_scan():
     and evaluate_flood_impact("data/geojson/flood_mask.geojson", "data/geojson/village_grids.geojson").
     Returns the refreshed FeatureCollection with dynamic flooded acres.
     """
+    try:
+        from src.app.pipeline.ml.change_detector import detect_flood_extent
+        from src.app.pipeline.geospatial.risk_evaluator import evaluate_flood_impact
+        from src.app.pipeline.geospatial.gee_client import fetch_sar_pair
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Raster pipeline tools unavailable in server environment: {e}")
+
     base_dir = Path(__file__).resolve().parents[2]
     cache_dir = base_dir / "data" / "cache"
     pre_path = cache_dir / "pre_sar.tif"
