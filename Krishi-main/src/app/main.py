@@ -3,7 +3,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from src.app.pipeline.geospatial.telemetry import (
     fetch_upstream_rain,
@@ -28,9 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+
 
 @app.get("/")
 def read_root():
+    index_file = os.path.join(dist_path, "index.html")
+    if os.path.exists(dist_path) and os.path.exists(index_file):
+        return FileResponse(index_file)
     return {
         "service": "CropSentinel AI API",
         "status": "online",
@@ -410,9 +416,22 @@ def api_generate_advisory(payload: AdvisoryRequest):
     return generate_village_advisory(village_data)
 
 
+if os.path.exists(dist_path):
+    assets_path = os.path.join(dist_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi.json") or full_path.startswith("redoc"):
+            raise HTTPException(status_code=404, detail="Not Found")
 
+        requested_file = os.path.join(dist_path, full_path)
+        if full_path and os.path.isfile(requested_file):
+            return FileResponse(requested_file)
 
+        index_file = os.path.join(dist_path, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
 
-
-
+        raise HTTPException(status_code=404, detail="Frontend index.html not found")
