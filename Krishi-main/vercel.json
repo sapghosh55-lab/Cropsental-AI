@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "src/app/main.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": "src/frontend/dist/**"
+      }
     }
   ],
   "routes": [
